@@ -1,12 +1,147 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
+<html lang="ru" style="--bg: #020a00; --accent: #39ff14;"><head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lobedron Hub</title>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;500;700;800&display=swap" rel="stylesheet">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Midnight Code v1.3 | Smart IDE</title>
     <style>
+        :root {
+            --bg: #050505;
+            --sidebar: rgba(10, 10, 10, 0.95);
+            --panel: rgba(20, 20, 20, 0.6);
+            --border: rgba(255, 255, 255, 0.08);
+            --accent: #2aabee;
+            --text: #ececec;
+            --font: 'JetBrains Mono', 'Consolas', monospace;
+            --syntax-tag: #e06c75;
+            --syntax-attr: #d19a66;
+            --syntax-string: #98c379;
+            --syntax-keyword: #c678dd;
+            --syntax-number: #d19a66;
+            --syntax-comment: #5c6370;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; display: flex; height: 100vh; overflow: hidden; }
+
+        .sidebar { width: 260px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; backdrop-filter: blur(10px); transition: 0.3s; }
+        .sidebar.hidden { transform: translateX(-260px); margin-right: -260px; }
+        .sb-head { padding: 25px 20px; font-size: 10px; letter-spacing: 3px; color: var(--accent); font-weight: 900; text-transform: uppercase; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+        
+        .main { flex: 1; display: flex; flex-direction: column; padding: 20px; gap: 15px; position: relative; }
+        
+        .nav { display: flex; justify-content: space-between; align-items: center; width: 100%; height: 45px; flex-wrap: wrap; gap: 10px; }
+        .nav-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .nav-center { position: absolute; left: 50%; transform: translateX(-50%); }
+        .nav-right { display: flex; align-items: center; }
+
+        .m-btn, .theme-btn, .btn, #fExt, .sb-new { transition: 0.2s; cursor: pointer; border: 1px solid var(--border); user-select: none; }
+        .m-btn:hover, .theme-btn:hover, .btn-i:hover, .btn-s:hover, #fExt:hover { border-color: var(--accent) !important; box-shadow: 0 0 8px -2px var(--accent); }
+
+        .modes { display: flex; background: #000; padding: 4px; border-radius: 10px; border: 1px solid var(--border); }
+        .m-btn { background: transparent; color: #444; border: none; padding: 8px 16px; border-radius: 7px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+        .m-btn.active { background: rgba(255, 255, 255, 0.07); color: var(--accent) !important; }
+
+        .theme-btn { background: var(--panel); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative; }
+        .moon-icon { width: 18px; height: 18px; fill: #555; transition: 0.3s; }
+        .theme-btn:hover .moon-icon { fill: var(--accent); }
+
+        .theme-menu { position: absolute; right: 50px; top: 0; height: 40px; display: flex; gap: 5px; background: #0a0a0a; border: 1px solid var(--border); border-radius: 10px; z-index: 1000; padding: 5px; transform: translateX(10px); opacity: 0; pointer-events: none; transition: 0.3s; }
+        .theme-menu.show { transform: translateX(0); opacity: 1; pointer-events: auto; }
+        .theme-opt { padding: 0 12px; height: 100%; display: flex; align-items: center; font-size: 9px; text-transform: uppercase; font-weight: 800; color: #666; border-radius: 6px; transition: 0.2s; white-space: nowrap; cursor: pointer; }
+        .theme-opt:hover { background: rgba(255,255,255,0.05); color: #fff; }
+
+        .editor-wrap { flex: 1; position: relative; border-radius: 20px; overflow: hidden; border: 1px solid var(--border); display: flex; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); }
+        .code-area { flex: 1; display: flex; position: relative; background: transparent; }
+        .lines { width: 50px; background: rgba(0,0,0,0.3); border-right: 1px solid var(--border); padding: 25px 0; text-align: center; font-family: var(--font); font-size: 12px; color: #555; line-height: 20px; overflow: hidden; user-select: none; }
+        .editor-container { flex: 1; position: relative; }
+        textarea, .syntax-highlight { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 25px; font-family: var(--font); font-size: 14px; line-height: 20px; white-space: pre-wrap; word-wrap: break-word; background: transparent; border: none; resize: none; overflow: auto; }
+        textarea { color: transparent; caret-color: var(--accent); z-index: 2; background: transparent; outline: none; }
+        .syntax-highlight { color: var(--text); z-index: 1; pointer-events: none; white-space: pre-wrap; word-wrap: break-word; overflow: auto; }
+        .preview { width: 100%; height: 100%; background: #fff; position: absolute; left: 0; transform: translateX(100%); transition: 0.3s; z-index: 2; }
+        iframe { width: 100%; height: 100%; border: none; background: #fff; }
+        .v-view .preview { transform: translateX(0); }
+        .v-split textarea, .v-split .syntax-highlight { width: calc(100% - 50px); }
+        .v-split .preview { width: 50%; transform: translateX(0); left: 50%; border-left: 1px solid var(--border); }
+
+        .footer { display: flex; gap: 10px; }
+        .btn { flex: 1; border: none; padding: 18px; border-radius: 14px; font-weight: 800; text-transform: uppercase; font-size: 11px; cursor: pointer; transition: 0.2s; }
+        .btn-p { background: var(--accent); color: #000; }
+        .btn-i { background: var(--panel); color: #777; }
+        .btn-s { background: var(--panel); color: #333; }
+        .btn-s.active { color: var(--accent) !important; border-color: var(--accent) !important; }
+
+        #fName { background: var(--panel); border: 1px solid var(--border); color:#fff; padding: 10px; border-radius: 10px; outline:none; width: 180px; }
+        #fExt { background:#000; color:#555; padding:9px; border-radius:10px; outline:none; cursor: pointer; }
+        .proj-item { display: flex; justify-content: space-between; padding: 12px; color: #666; border-radius: 8px; font-size: 13px; cursor: pointer; }
+        .proj-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .ver-box { margin-top: auto; padding: 20px; border-top: 1px solid var(--border); opacity: 0.4; cursor: pointer; }
+        .ver-text { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; font-weight: 800; color: #555; }
+
+        @media (max-width: 700px) {
+            .nav-center { position: static; transform: none; order: 3; margin-top: 10px; }
+            .nav { flex-direction: column; align-items: stretch; height: auto; }
+            .nav-left, .nav-right { justify-content: space-between; }
+        }
+    </style>
+<script type="text/javascript" src="moz-extension://c24051dd-bcf0-49ea-9a60-7d3d2931967c/content/fixHeadlessAudio.js"></script><script type="text/javascript" src="moz-extension://c24051dd-bcf0-49ea-9a60-7d3d2931967c/content/fixHeadlessAudio.js"></script><script type="text/javascript" src="moz-extension://c24051dd-bcf0-49ea-9a60-7d3d2931967c/content/fixHeadlessAudio.js"></script><script type="text/javascript" src="moz-extension://c24051dd-bcf0-49ea-9a60-7d3d2931967c/content/fixHeadlessAudio.js"></script><script type="text/javascript" src="moz-extension://c24051dd-bcf0-49ea-9a60-7d3d2931967c/content/fixHeadlessAudio.js"></script><script type="text/javascript" src="moz-extension://c24051dd-bcf0-49ea-9a60-7d3d2931967c/content/fixHeadlessAudio.js"></script></head>
+<body onclick="closeThemes()">
+
+    <aside class="sidebar" id="sidebar">
+        <div class="sb-head">Midnight Code</div>
+        <div style="padding:15px; flex:1; overflow-y:auto;">
+            <button class="sb-new" style="width:100%; padding:12px; background:var(--panel); border:1px solid var(--border); color:#fff; border-radius:8px;" onclick="resetAll()">+ New Project</button>
+            <div id="projList" style="margin-top:20px"></div>
+        </div>
+        <div class="ver-box" onclick="downloadSource()">
+            <div class="ver-text">v1.3</div>
+        </div>
+    </aside>
+
+    <main class="main">
+        <div class="nav">
+            <div class="nav-left">
+                <button style="background:none; border:none; color:#555; cursor:pointer; font-size:20px;" onclick="event.stopPropagation(); document.getElementById('sidebar').classList.toggle('hidden')">☰</button>
+                <input type="text" id="fName" value="index">
+                <select id="fExt" onchange="changeExt()">
+                    <option value=".html">.HTML</option>
+                    <option value=".css">.CSS</option>
+                    <option value=".js">.JS</option>
+                </select>
+            </div>
+            <div class="nav-center">
+                <div class="modes">
+                    <button class="m-btn" id="b1" onclick="setM('code')">Code</button>
+                    <button class="m-btn" id="b2" onclick="setM('view')">Visual</button>
+                    <button class="m-btn active" id="b3" onclick="setM('split')">Split</button>
+                </div>
+            </div>
+            <div class="nav-right">
+                <div class="theme-btn" onclick="event.stopPropagation(); document.getElementById('tm').classList.toggle('show')">
+                    <svg class="moon-icon" viewBox="0 0 24 24"><path d="M12 3c.132 0 .263 0 .393.007a9 9 0 0 0 9.592 9.592A9 9 0 1 1 12 3z"></path></svg>
+                    <div class="theme-menu" id="tm">
+                        <div class="theme-opt" style="color:#2aabee" onclick="setT('#050505','#2aabee')">Midnight</div>
+                        <div class="theme-opt" style="color:#ffffff" onclick="setT('#000000','#ffffff')">Onyx</div>
+                        <div class="theme-opt" style="color:#ffe135" onclick="setT('#0a0900','#ffe135')">Banana</div>
+                        <div class="theme-opt" style="color:#39ff14" onclick="setT('#020a00','#39ff14')">Toxic</div>
+                        <div class="theme-opt" style="color:#ff3131" onclick="setT('#0a0000','#ff3131')">Crimson</div>
+                        <div class="theme-opt" onclick="closeThemes()">›</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="editor-wrap v-split" id="wrap">
+            <div class="code-area">
+                <div class="lines" id="lnBox">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br>25<br>26<br>27<br>28<br>29<br>30<br>31<br>32<br>33<br>34<br>35<br>36<br>37<br>38<br>39<br>40<br>41<br>42<br>43<br>44<br>45<br>46<br>47<br>48<br>49<br>50<br>51<br>52<br>53<br>54<br>55<br>56<br>57<br>58<br>59<br>60<br>61<br>62<br>63<br>64<br>65<br>66<br>67<br>68<br>69<br>70<br>71<br>72<br>73<br>74<br>75<br>76<br>77<br>78<br>79<br>80<br>81<br>82<br>83<br>84<br>85<br>86<br>87<br>88<br>89<br>90<br>91<br>92<br>93<br>94<br>95<br>96<br>97<br>98<br>99<br>100<br>101<br>102<br>103<br>104<br>105<br>106<br>107<br>108<br>109<br>110<br>111<br>112<br>113<br>114<br>115<br>116<br>117<br>118<br>119<br>120<br>121<br>122<br>123<br>124<br>125<br>126<br>127<br>128<br>129<br>130<br>131<br>132<br>133<br>134<br>135<br>136<br>137<br>138<br>139<br>140<br>141<br>142<br>143<br>144<br>145<br>146<br>147<br>148<br>149<br>150<br>151<br>152<br>153<br>154<br>155<br>156<br>157<br>158<br>159<br>160<br>161<br>162<br>163<br>164<br>165<br>166<br>167<br>168<br>169<br>170<br>171<br>172<br>173<br>174<br>175<br>176<br>177<br>178<br>179<br>180<br>181<br>182<br>183<br>184<br>185<br>186<br>187<br>188<br>189<br>190<br>191<br>192<br>193<br>194<br>195<br>196<br>197<br>198<br>199<br>200<br>201<br>202<br>203<br>204<br>205<br>206<br>207<br>208<br>209<br>210<br>211<br>212<br>213<br>214<br>215<br>216<br>217<br>218<br>219<br>220<br>221<br>222<br>223<br>224<br>225<br>226<br>227<br>228<br>229<br>230<br>231<br>232<br>233<br>234<br>235<br>236<br>237<br>238<br>239<br>240<br>241<br>242<br>243<br>244<br>245<br>246<br>247<br>248<br>249<br>250<br>251<br>252<br>253<br>254<br>255<br>256<br>257<br>258<br>259<br>260<br>261<br>262<br>263<br>264<br>265<br>266<br>267<br>268<br>269<br>270<br>271<br>272<br>273<br>274<br>275<br>276<br>277<br>278<br>279<br>280<br>281<br>282<br>283<br>284<br>285<br>286<br>287<br>288<br>289<br>290<br>291<br>292<br>293<br>294<br>295<br>296<br>297<br>298<br>299<br>300<br>301<br>302<br>303<br>304<br>305<br>306<br>307<br>308<br>309<br>310<br>311<br>312<br>313<br>314<br>315<br>316<br>317<br>318<br>319<br>320</div>
+                <div class="editor-container">
+                    <div class="syntax-highlight" id="syntaxHighlight">&lt;!DOCTYPE html&gt;
+<span style="color: var(--syntax-tag);">&lt;html lang="ru"&gt;</span>
+<span style="color: var(--syntax-tag);">&lt;head&gt;</span>
+    <span style="color: var(--syntax-tag);">&lt;meta charset="UTF-8"&gt;</span>
+    <span style="color: var(--syntax-tag);">&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</span>
+    <span style="color: var(--syntax-tag);">&lt;title&gt;</span>Lobedron Hub<span style="color: var(--syntax-tag);">&lt;/title&gt;</span>
+    &lt;link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;500;700;800&amp;display=swap" rel="stylesheet"&gt;
+    
+    <span style="color: var(--syntax-tag);">&lt;style&gt;</span>
         :root {
             --bg-color: #050505;
             --text-color: #ffffff;
@@ -173,50 +308,50 @@
             transition: 0.3s;
         }
 
-    </style>
-</head>
-<body>
+    <span style="color: var(--syntax-tag);">&lt;/style&gt;</span>
+<span style="color: var(--syntax-tag);">&lt;/head&gt;</span>
+<span style="color: var(--syntax-tag);">&lt;body&gt;</span>
 
-    <canvas id="rainCanvas"></canvas>
+    <span style="color: var(--syntax-tag);">&lt;canvas id="rainCanvas"&gt;</span><span style="color: var(--syntax-tag);">&lt;/canvas&gt;</span>
     
-    <audio id="bgMusic" src="music.mp3" loop autoplay></audio>
+    <span style="color: var(--syntax-tag);">&lt;audio id="bgMusic" src="music.mp3" loop autoplay&gt;</span><span style="color: var(--syntax-tag);">&lt;/audio&gt;</span>
 
-    <div class="container">
-        <div class="header">
-            <h1>Lobedron Hub</h1>
-            <p>programs</p>
-        </div>
+    <span style="color: var(--syntax-tag);">&lt;div class="container"&gt;</span>
+        <span style="color: var(--syntax-tag);">&lt;div class="header"&gt;</span>
+            <span style="color: var(--syntax-tag);">&lt;h1&gt;</span>Lobedron Hub<span style="color: var(--syntax-tag);">&lt;/h1&gt;</span>
+            <span style="color: var(--syntax-tag);">&lt;p&gt;</span>programs<span style="color: var(--syntax-tag);">&lt;/p&gt;</span>
+        <span style="color: var(--syntax-tag);">&lt;/div&gt;</span>
 
-        <div class="projects-grid">
-            <a href="https://lobedron.github.io/67-stats/" class="project-card">
-                <h2>Lob Analytics</h2>
-                <p>Профессиональная статистика канала XrayGame. Графики и глубокий анализ данных.</p>
-            </a>
+        <span style="color: var(--syntax-tag);">&lt;div class="projects-grid"&gt;</span>
+            <span style="color: var(--syntax-tag);">&lt;a href="https://lobedron.github.io/67-stats/" class="project-card"&gt;</span>
+                <span style="color: var(--syntax-tag);">&lt;h2&gt;</span>Lob Analytics<span style="color: var(--syntax-tag);">&lt;/h2&gt;</span>
+                <span style="color: var(--syntax-tag);">&lt;p&gt;</span>Профессиональная статистика канала XrayGame. Графики и глубокий анализ данных.<span style="color: var(--syntax-tag);">&lt;/p&gt;</span>
+            <span style="color: var(--syntax-tag);">&lt;/a&gt;</span>
 
-            <a href="https://lobedron.github.io/midnight-code/" class="project-card">
-                <h2>Midnight Code</h2>
-                <p>Удобный редактор кода html, js, css.</p>
-            </a>
-        </div>
-    </div>
+            <span style="color: var(--syntax-tag);">&lt;a href="https://lobedron.github.io/midnight-code/" class="project-card"&gt;</span>
+                <span style="color: var(--syntax-tag);">&lt;h2&gt;</span>Midnight Code<span style="color: var(--syntax-tag);">&lt;/h2&gt;</span>
+                <span style="color: var(--syntax-tag);">&lt;p&gt;</span>Удобный редактор кода html, js, css.<span style="color: var(--syntax-tag);">&lt;/p&gt;</span>
+            <span style="color: var(--syntax-tag);">&lt;/a&gt;</span>
+        <span style="color: var(--syntax-tag);">&lt;/div&gt;</span>
+    <span style="color: var(--syntax-tag);">&lt;/div&gt;</span>
 
-    <div class="controls-bar">
-        <div class="mute-btn" id="muteBtn" onclick="toggleMute()">
-            <svg id="speakerIcon" viewBox="0 0 24 24">
-                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-            </svg>
-        </div>
+    <span style="color: var(--syntax-tag);">&lt;div class="controls-bar"&gt;</span>
+        <span style="color: var(--syntax-tag);">&lt;div class="mute-btn" id="muteBtn" onclick="toggleMute()"&gt;</span>
+            <span style="color: var(--syntax-tag);">&lt;svg id="speakerIcon" viewBox="0 0 24 24"&gt;</span>
+                <span style="color: var(--syntax-tag);">&lt;path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/&gt;</span>
+            <span style="color: var(--syntax-tag);">&lt;/svg&gt;</span>
+        <span style="color: var(--syntax-tag);">&lt;/div&gt;</span>
 
-        <input type="range" id="volSlider" class="volume-slider" min="0" max="100" value="30" oninput="updateVolume()">
+        <span style="color: var(--syntax-tag);">&lt;input type="range" id="volSlider" class="volume-slider" min="0" max="100" value="30" oninput="updateVolume()"&gt;</span>
 
-        <div style="width: 1px; height: 20px; background: var(--border-color);"></div>
+        <span style="color: var(--syntax-tag);">&lt;div style="width: 1px; height: 20px; background: var(--border-color);"&gt;</span><span style="color: var(--syntax-tag);">&lt;/div&gt;</span>
 
-        <button class="theme-btn" onclick="toggleTheme()" title="Сменить тему">
-            <svg viewBox="0 0 24 24"><path d="M12 3c.132 0 .263 0 .393.007a9 9 0 0 0 9.592 9.592A9 9 0 1 1 12 3z"></path></svg>
-        </button>
-    </div>
+        <span style="color: var(--syntax-tag);">&lt;button class="theme-btn" onclick="toggleTheme()" title="Сменить тему"&gt;</span>
+            <span style="color: var(--syntax-tag);">&lt;svg viewBox="0 0 24 24"&gt;</span><span style="color: var(--syntax-tag);">&lt;path d="M12 3c.132 0 .263 0 .393.007a9 9 0 0 0 9.592 9.592A9 9 0 1 1 12 3z"&gt;</span><span style="color: var(--syntax-tag);">&lt;/path&gt;</span><span style="color: var(--syntax-tag);">&lt;/svg&gt;</span>
+        <span style="color: var(--syntax-tag);">&lt;/button&gt;</span>
+    <span style="color: var(--syntax-tag);">&lt;/div&gt;</span>
 
-    <script>
+    <span style="color: var(--syntax-tag);">&lt;script&gt;</span>
         const audio = document.getElementById('bgMusic');
         const speakerIcon = document.getElementById('speakerIcon');
         const volSlider = document.getElementById('volSlider');
@@ -232,18 +367,18 @@
         let previousVolume = audio.volume;
 
         function toggleMute() {
-            if (audio.volume > 0) {
+            if (audio.volume &gt; 0) {
                 previousVolume = audio.volume;
                 audio.volume = 0;
                 volSlider.value = 0;
                 speakerIcon.querySelector('path').setAttribute('d', iconMute);
             } else {
-                audio.volume = previousVolume > 0 ? previousVolume : 0.3;
+                audio.volume = previousVolume &gt; 0 ? previousVolume : 0.3;
                 volSlider.value = audio.volume * 100;
                 speakerIcon.querySelector('path').setAttribute('d', iconSound);
             }
             // Попытка сыграть, если заблокировано
-            if (audio.paused) audio.play().catch(()=>{});
+            if (audio.paused) audio.play().catch(()=&gt;{});
         }
 
         function updateVolume() {
@@ -264,7 +399,7 @@
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             drops = [];
-            for (let i = 0; i < 150; i++) {
+            for (let i = 0; i &lt; 150; i++) {
                 drops.push({
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
@@ -282,7 +417,7 @@
             ctx.lineWidth = 1;
             ctx.lineCap = 'round';
 
-            for (let i = 0; i < drops.length; i++) {
+            for (let i = 0; i &lt; drops.length; i++) {
                 let p = drops[i];
                 ctx.beginPath();
                 ctx.moveTo(p.x, p.y);
@@ -290,7 +425,7 @@
                 ctx.stroke();
 
                 p.y += p.speed;
-                if (p.y > canvas.height) {
+                if (p.y &gt; canvas.height) {
                     p.y = -p.length;
                     p.x = Math.random() * canvas.width;
                 }
@@ -312,9 +447,354 @@
         drawRain();
 
         // Автоплей (если браузер позволит)
-        window.addEventListener('click', () => {
-            if (audio.paused) audio.play().catch(()=>{});
+        window.addEventListener('click', () =&gt; {
+            if (audio.paused) audio.play().catch(()=&gt;{});
         }, { once: true });
-    </script>
+    <span style="color: var(--syntax-tag);">&lt;/script&gt;</span>
+<span style="color: var(--syntax-tag);">&lt;/body&gt;</span>
+<span style="color: var(--syntax-tag);">&lt;/html&gt;</span><br></div>
+                    <textarea id="edit" spellcheck="false" placeholder="// напиши свой код здесь" oninput="hInput()" onkeydown="handleKeys(event)" onscroll="syncScroll()"></textarea>
+                </div>
+            </div>
+            <div class="preview"><iframe id="ifr"></iframe></div>
+        </div>
+
+        <div class="footer">
+            <button class="btn btn-s active" id="btnSave" onclick="save()">В проекты</button>
+            <button class="btn btn-i" onclick="document.getElementById('fileIn').click()">Импорт</button>
+            <button class="btn btn-p" onclick="exp()">Экспорт</button>
+        </div>
+    </main>
+
+    <input type="file" id="fileIn" style="display:none" onchange="hImport(this)">
+
+<script>
+    // ========== ОСНОВНЫЕ ПЕРЕМЕННЫЕ ==========
+    const el = id => document.getElementById(id);
+    let projects = JSON.parse(localStorage.getItem('mc_storage') || '[]');
+    let curId = null;
+
+    // ========== ПОДСВЕТКА СИНТАКСИСА ==========
+    function highlightSyntax(code, ext) {
+        if (ext === '.html') {
+            // Подсветка HTML тегов и атрибутов
+            code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            code = code.replace(/&lt;(\/?[a-zA-Z][a-zA-Z0-9]*)(\s[^&]*?)?&gt;/g, (match, tag, attrs) => {
+                let attrHighlight = '';
+                if (attrs) {
+                    attrHighlight = attrs.replace(/([a-zA-Z\-]+)=(&quot;|&apos;)(.*?)\2/g, '<span style="color: var(--syntax-attr);">$1</span>=<span style="color: var(--syntax-string);">$2$3$2</span>');
+                    attrHighlight = attrHighlight.replace(/(&quot;|&apos;)/g, '<span style="color: var(--syntax-string);">$1</span>');
+                }
+                return `<span style="color: var(--syntax-tag);">&lt;${tag}${attrHighlight}&gt;</span>`;
+            });
+            // Комментарии HTML
+            code = code.replace(/&lt;!--(.*?)--&gt;/g, '<span style="color: var(--syntax-comment);">&lt;!--$1--&gt;</span>');
+        } 
+        else if (ext === '.css') {
+            code = escapeHtml(code);
+            // Селекторы и свойства
+            code = code.replace(/([a-zA-Z\-]+)(?=\s*\{)/g, '<span style="color: var(--syntax-tag);">$1</span>');
+            code = code.replace(/([a-zA-Z\-]+)(?=\s*:)/g, '<span style="color: var(--syntax-attr);">$1</span>');
+            code = code.replace(/:\s*(.+?)(;|\})/g, ': <span style="color: var(--syntax-string);">$1</span>$2');
+            // Комментарии CSS
+            code = code.replace(/\/\*(.*?)\*\//g, '<span style="color: var(--syntax-comment);">/*$1*/</span>');
+        } 
+        else if (ext === '.js') {
+            code = escapeHtml(code);
+            // Ключевые слова JavaScript
+            const keywords = ['const', 'let', 'var', 'function', 'return', 'if', 'else', 'for', 'while', 'switch', 'case', 'break', 'continue', 'class', 'new', 'this', 'typeof', 'instanceof', 'true', 'false', 'null', 'undefined', 'async', 'await', 'try', 'catch', 'finally', 'throw', 'import', 'export', 'default'];
+            keywords.forEach(kw => {
+                const regex = new RegExp(`\\b(${kw})\\b`, 'g');
+                code = code.replace(regex, `<span style="color: var(--syntax-keyword);">$1</span>`);
+            });
+            // Строки
+            code = code.replace(/(".*?"|'.*?'|`.*?`)/g, '<span style="color: var(--syntax-string);">$1</span>');
+            // Числа
+            code = code.replace(/\b(\d+)\b/g, '<span style="color: var(--syntax-number);">$1</span>');
+            // Комментарии
+            code = code.replace(/\/\/(.*?)$/gm, '<span style="color: var(--syntax-comment);">//$1</span>');
+            code = code.replace(/\/\*(.*?)\*\//gs, '<span style="color: var(--syntax-comment);">/*$1*/</span>');
+            // Функции
+            code = code.replace(/\b([a-zA-Z_$][a-zA-Z0-9_$]*)(?=\s*\()/g, '<span style="color: var(--syntax-number);">$1</span>');
+        }
+        return code;
+    }
+
+    function escapeHtml(text) {
+        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function updateHighlight() {
+        const code = el('edit').value;
+        const ext = el('fExt').value;
+        const highlighted = highlightSyntax(code, ext);
+        el('syntaxHighlight').innerHTML = highlighted + '<br>';
+        syncScroll();
+    }
+
+    function syncScroll() {
+        const textarea = el('edit');
+        const highlight = el('syntaxHighlight');
+        if (highlight) highlight.scrollTop = textarea.scrollTop;
+        el('lnBox').scrollTop = textarea.scrollTop;
+    }
+
+    // ========== ОБНОВЛЕНИЕ НОМЕРОВ СТРОК ==========
+    function updateLineNumbers() {
+        const val = el('edit').value;
+        const lines = val.split('\n').length;
+        el('lnBox').innerHTML = Array.from({length: lines}, (_, i) => i + 1).join('<br>');
+        el('btnSave').classList.toggle('active', val.trim().length > 0);
+    }
+
+    // ========== ОБНОВЛЕНИЕ ПРЕВЬЮ ==========
+    function updatePreview() {
+        const code = el('edit').value;
+        const ext = el('fExt').value;
+        const frame = el('ifr').contentWindow.document;
+        frame.open();
+        if (ext === '.html') frame.write(code);
+        else if (ext === '.css') frame.write('<style>' + code + '</style><div style="padding:20px; font-family:monospace;">✨ CSS превью активен</div>');
+        else if (ext === '.js') frame.write('<script>' + code + '<\/script><div style="padding:20px; font-family:monospace;">✅ JS скрипт выполнен. Открой консоль (F12)</div>');
+        frame.close();
+    }
+
+    // ========== ОСНОВНОЙ ОБРАБОТЧИК ==========
+    function hInput() {
+        updateLineNumbers();
+        updateHighlight();
+        updatePreview();
+        sync();
+    }
+
+    function sync() {
+        const code = el('edit').value;
+        const ext = el('fExt').value;
+        const frame = el('ifr').contentWindow.document;
+        frame.open();
+        if (ext === '.html') frame.write(code);
+        else if (ext === '.css') frame.write('<style>' + code + '</style><div style="padding:20px; font-family:monospace;">✨ CSS превью активен</div>');
+        else if (ext === '.js') frame.write('<script>' + code + '<\/script><div style="padding:20px; font-family:monospace;">✅ JS скрипт выполнен</div>');
+        frame.close();
+    }
+
+    function changeExt() {
+        updateHighlight();
+        updatePreview();
+        const ext = el('fExt').value;
+        const name = el('fName').value;
+        if (name.includes('.')) {
+            el('fName').value = name.split('.')[0];
+        }
+        if (curId) save();
+        hInput();
+    }
+
+    // ========== РЕЖИМЫ ОТОБРАЖЕНИЯ ==========
+    function setM(m) {
+        el('wrap').classList.remove('v-view', 'v-split');
+        document.querySelectorAll('.m-btn').forEach(b => b.classList.remove('active'));
+        if(m === 'view') { el('wrap').classList.add('v-view'); el('b2').classList.add('active'); }
+        else if(m === 'split') { el('wrap').classList.add('v-split'); el('b3').classList.add('active'); }
+        else el('b1').classList.add('active');
+        setTimeout(() => { updateHighlight(); syncScroll(); }, 50);
+    }
+
+    // ========== ТЕМЫ ==========
+    function setT(bg, acc) { 
+        document.documentElement.style.setProperty('--bg', bg);
+        document.documentElement.style.setProperty('--accent', acc);
+        closeThemes();
+    }
+    function closeThemes() { const tm = el('tm'); if(tm) tm.classList.remove('show'); }
+
+    // ========== РАБОТА С ПРОЕКТАМИ ==========
+    function save() {
+        const name = el('fName').value || 'script';
+        const code = el('edit').value;
+        const ext = el('fExt').value;
+        if(!code.trim()) return;
+        if(curId) {
+            const idx = projects.findIndex(p => p.id === curId);
+            if(idx !== -1) projects[idx] = { id: curId, name, code, ext };
+        } else {
+            const p = { id: Date.now(), name, code, ext };
+            curId = p.id;
+            projects.unshift(p);
+        }
+        localStorage.setItem('mc_storage', JSON.stringify(projects));
+        renderProjects();
+        el('btnSave').classList.add('active');
+        setTimeout(() => el('btnSave').classList.remove('active'), 500);
+    }
+
+    function renderProjects() {
+        const container = el('projList');
+        if(!container) return;
+        container.innerHTML = '';
+        projects.forEach(p => {
+            const d = document.createElement('div');
+            d.className = 'proj-item';
+            d.innerHTML = `<span>${p.name}${p.ext}</span><span onclick="event.stopPropagation(); delP(${p.id})" style="cursor:pointer;">×</span>`;
+            d.onclick = () => { 
+                curId = p.id;
+                el('fName').value = p.name;
+                el('edit').value = p.code;
+                el('fExt').value = p.ext;
+                hInput();
+            };
+            container.appendChild(d);
+        });
+    }
+
+    function delP(id) { 
+        projects = projects.filter(x => x.id !== id);
+        localStorage.setItem('mc_storage', JSON.stringify(projects));
+        if(curId === id) resetAll();
+        renderProjects(); 
+    }
+
+    function resetAll() { 
+        curId = null;
+        el('fName').value = 'index';
+        el('fExt').value = '.html';
+        el('edit').value = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой проект</title>
+    <style>
+        body {
+            font-family: system-ui;
+            background: #0a0a0a;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Привет, мир!</h1>
+    <script>
+        console.log("Hello from Midnight Code!");
+    <\/script>
 </body>
-</html>
+</html>`;
+        hInput();
+    }
+
+    function exp() { 
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([el('edit').value]));
+        a.download = el('fName').value + el('fExt').value;
+        a.click();
+    }
+
+    function downloadSource() { 
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([document.documentElement.outerHTML], {type: 'text/html'}));
+        a.download = 'midnight_v1.3.html'
+        a.click();
+    }
+
+    function hImport(input) { 
+        const r = new FileReader();
+        r.onload = e => { 
+            el('edit').value = e.target.result;
+            hInput();
+        };
+        r.readAsText(input.files[0]);
+    }
+
+    // ========== УМНЫЕ КЛАВИШИ ==========
+    function handleKeys(e) {
+        const area = e.target;
+        const start = area.selectionStart;
+        const end = area.selectionEnd;
+        const before = area.value.substring(0, start);
+        const after = area.value.substring(end);
+
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const ext = el('fExt').value;
+            const snippets = {
+                '.html': { '<sty': '<style>\n    \n</style>', '<scr': '<script>\n    \n<\/script>', '<div': '<div></div>', '<but': '<button></button>', '<h1': '<h1></h1>', '<a': '<a href="#"></a>' },
+                '.css': { 'bg': 'background: ;', 'col': 'color: ;', 'mar': 'margin: ;', 'pad': 'padding: ;', 'bor': 'border: 1px solid ;' },
+                '.js': { 'log': 'console.log();', 'fun': 'function name() {\n    \n}', 'if': 'if () {\n    \n}', 'for': 'for (let i = 0; i < ; i++) {\n    \n}', 'arr': 'const arr = [];', 'con': 'const ' }
+            };
+            const currentSnippets = snippets[ext] || snippets['.js'];
+            for (let key in currentSnippets) {
+                if (before.endsWith(key)) {
+                    area.value = before.substring(0, before.length - key.length) + currentSnippets[key] + after;
+                    const newPos = start + currentSnippets[key].indexOf('\n') !== -1 ? start + currentSnippets[key].indexOf('\n') + 5 : start + currentSnippets[key].indexOf('(') + 1;
+                    area.selectionStart = area.selectionEnd = newPos > 0 ? newPos : start + 1;
+                    hInput();
+                    return;
+                }
+            }
+            area.value = before + "    " + after;
+            area.selectionStart = area.selectionEnd = start + 4;
+            hInput();
+            return;
+        }
+
+        const pairs = { '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`' };
+        if (pairs[e.key]) {
+            e.preventDefault();
+            area.value = before + e.key + pairs[e.key] + after;
+            area.selectionStart = area.selectionEnd = start + 1;
+            hInput();
+            return;
+        }
+
+        if (e.key === 'Enter') {
+            const line = before.split('\n').pop();
+            const lastChar = before.slice(-1);
+            const indent = line.match(/^\s*/)[0];
+            let newIndent = indent;
+            if (lastChar === '{' || lastChar === '>' || lastChar === '[' || lastChar === '(') {
+                newIndent = indent + '    ';
+                e.preventDefault();
+                area.value = before + "\n" + newIndent + "\n" + indent + (lastChar === '{' ? '}' : '') + after;
+                area.selectionStart = area.selectionEnd = start + newIndent.length + 1;
+                hInput();
+                return;
+            }
+            if (line.trim().startsWith('//')) {
+                e.preventDefault();
+                area.value = before + "\n" + indent + after;
+                area.selectionStart = area.selectionEnd = start + indent.length + 1;
+                hInput();
+                return;
+            }
+        }
+        hInput();
+    }
+
+    // ========== ИНИЦИАЛИЗАЦИЯ ==========
+    function init() {
+        renderProjects();
+        if (projects.length === 0) {
+            resetAll();
+        } else {
+            const last = projects[0];
+            curId = last.id;
+            el('fName').value = last.name;
+            el('edit').value = last.code;
+            el('fExt').value = last.ext;
+            hInput();
+        }
+        setM('split');
+        el('fExt').value = '.html';
+        hInput();
+    }
+
+    init();
+</script>
+
+
+</body></html>
