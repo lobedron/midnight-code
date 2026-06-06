@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru" style="--bg: #050505; --accent: #2aabee;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Midnight Code</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body onclick="closeThemes()">
+
+    <main class="main">
+        <div class="nav">
+            <div class="nav-left">
+                <div class="brand">
+                    <span class="brand-title">Midnight Code</span>
+                    <span class="brand-ver" onclick="downloadSource()">v1.6</span>
+                </div>
+                <input type="text" id="fName" value="index">
+                <select id="fExt" onchange="changeExt()">
+                    <option value=".html">.HTML</option>
+                    <option value=".css">.CSS</option>
+                    <option value=".js">.JS</option>
+                </select>
+                <div class="search-wrap">
+                    <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
+                    <input type="text" id="findInp" placeholder="Поиск..." oninput="hInput()" onkeydown="handleSearchKey(event)">
+                    <div id="matchCount" style="display:flex; align-items:center; gap:5px; font-size:10px; color:#666; margin-right:5px; user-select:none;">
+                        <span onclick="navSearch(-1)" style="cursor:pointer; padding:2px;">❮</span>
+                        <span id="matchInfo">0/0</span>
+                        <span onclick="navSearch(1)" style="cursor:pointer; padding:2px;">❯</span>
+                    </div>
+                </div>
+            </div>
+            <div class="nav-center">
+                <div class="modes">
+                    <button class="m-btn" id="b1" onclick="setM('code')">Code</button>
+                    <button class="m-btn" id="b2" onclick="setM('view')">Visual</button>
+                    <button class="m-btn active" id="b3" onclick="setM('split')">Split</button>
+                </div>
+            </div>
+            <div class="nav-right">
+                <div class="theme-btn" onclick="event.stopPropagation(); el('tm').classList.toggle('show')">
+                    <svg class="moon-icon" viewBox="0 0 24 24"><path d="M12 3c.132 0 .263 0 .393.007a9 9 0 0 0 9.592 9.592A9 9 0 1 1 12 3z"></path></svg>
+                    <div class="theme-menu" id="tm">
+                        <div class="theme-opt" style="color:#2aabee" onclick="setT('#050505','#2aabee')">Midnight</div>
+                        <div class="theme-opt" style="color:#ffffff" onclick="setT('#000000','#ffffff')">Onyx</div>
+                        <div class="theme-opt" style="color:#39ff14" onclick="setT('#020a00','#39ff14')">Toxic</div>
+                        <div class="theme-opt" style="color:#ff3131" onclick="setT('#0a0000','#ff3131')">Crimson</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="editor-wrap v-split" id="wrap">
+            <div class="code-area">
+                <div class="lines" id="lnBox">1</div>
+                <div class="editor-container">
+                    <div class="syntax-highlight" id="syntaxHighlight"></div>
+                    <textarea id="edit" spellcheck="false" oninput="hInput()" onkeydown="handleKeys(event)" onscroll="syncScroll()"></textarea>
+                </div>
+            </div>
+            <div class="preview"><iframe id="ifr"></iframe></div>
+        </div>
+
+        <div class="footer">
+            <button class="btn btn-i" onclick="el('fileIn').click()">Импорт</button>
+            <button class="btn btn-p" onclick="exp()">Экспорт</button>
+        </div>
+    </main>
+
+    <input type="file" id="fileIn" style="display:none" onchange="hImport(this)">
+    <script src="script.js"></script>
+</body>
+</html>
